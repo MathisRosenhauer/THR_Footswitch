@@ -57,10 +57,11 @@ void usage(void)
     fprintf(stderr, ".YDL file to a Yamaha THR10/5\n\n");
     fprintf(stderr, "SYNOPSIS\n\tthrpatch [OPTION]... FILE\n");
     fprintf(stderr, "\nOPTIONS\n");
-    fprintf(stderr, "\t-h\n\t\tprint this text\n");
-    fprintf(stderr, "\t-l\n\t\tlist all patches in file\n");
     fprintf(stderr, "\t-d device\n\t\tdump patch to MIDI device\n");
+    fprintf(stderr, "\t-h\n\t\tprint this text\n");
+    fprintf(stderr, "\t-l\n\t\tlist all patches in FILE\n");
     fprintf(stderr, "\t-o file\n\t\tdump patch into .syx file\n");
+    fprintf(stderr, "\t-p n\n\t\tuse patch n from FILE\n");
 }
 
 int main(int argc, char *argv[])
