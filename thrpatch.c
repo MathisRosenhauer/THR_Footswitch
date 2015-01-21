@@ -36,7 +36,7 @@
 
 /*  F0: Begin system exclusive
  *  43: YAMAHA ID
- *  7D: Device number
+ *  7D: ?
  *  00: ?
  */
 #define MESSAGE_START "\xf0\x43\x7d\x00"
