@@ -42,6 +42,7 @@
 #include <SD.h>
 #include <Usb.h>
 #include <usbh_midi.h>
+#include <TM1637Display.h>
 
 #define PATCH_MAGIC "\xf0\x43\x7d\x00\x02\x0c\x44\x54\x41\x31\x41\x6c\x6c\x50\x00\x00\x7f\x7f"
 #define PRESET_FILE_HEADER 6
@@ -50,9 +51,14 @@
 #define BUTTON_PIN_1 2
 #define BUTTON_PIN_2 3
 #define CS_SDCARD 4
+// Display IO
+#define DIO 5
+#define CLK 6
+// CS_USBH 7
 
 USB  Usb;
 USBH_MIDI Midi(&Usb);
+TM1637Display display(CLK, DIO);
 
 uint16_t pid, vid;
 uint8_t patch_id = 1;
@@ -72,6 +78,7 @@ void setup()
     pinMode(BUTTON_PIN_2,INPUT_PULLUP);
     debouncer2.attach(BUTTON_PIN_2);
     debouncer2.interval(5);
+    display.setBrightness(0x0f);
 
     if (!SD.begin(CS_SDCARD)) {
         Serial.println("Card failed, or not present");
@@ -104,11 +111,11 @@ void send_patch()
     if (patchfile) {
         patchfile.seek(0xd + (patch_id - 1) * (PATCH_SIZE + 5));
         Midi.SendSysEx(prefix, 18);
-        for (i = 0; i < 18; i++) {
-            sprintf(buf, " %02X", prefix[i]);
-            Serial.print(buf);
-        }
-        Serial.println("");
+//        for (i = 0; i < 18; i++) {
+//            sprintf(buf, " %02X", prefix[i]);
+//            Serial.print(buf);
+//        }
+//        Serial.println("");
 
         for (j = 0; j < 16; j++) {
             for (i = 0; i < 16; i++) {
@@ -116,8 +123,8 @@ void send_patch()
                     line[i] = 0;
                 else
                     line[i] = patchfile.read();
-                sprintf(buf, " %02X", line[i]);
-                Serial.print(buf);
+//                sprintf(buf, " %02X", line[i]);
+//                Serial.print(buf);
                 cs += line[i];
             }
             Midi.SendSysEx(line, 16);
@@ -126,8 +133,8 @@ void send_patch()
         suffix[0] = (~cs + 1) & 0x7f;
         suffix[1] = 0xf7;
         Midi.SendSysEx(suffix, 2);
-        sprintf(buf, " cs: %02X", suffix[0]);
-        Serial.print(buf);
+//        sprintf(buf, " cs: %02X", suffix[0]);
+//        Serial.print(buf);
         patchfile.close();
     } else {
         Serial.println("File not present.");
@@ -160,5 +167,6 @@ void loop() {
         if (button2 && patch_id > 1)
             patch_id--;
         send_patch();
+        display.showNumberDec(patch_id, false);
     }
 }
