@@ -128,7 +128,7 @@ void send_patch()
                 cs += line[i];
             }
             Midi.SendSysEx(line, 16);
-            Serial.println("");
+//            Serial.println("");
         }
         suffix[0] = (~cs + 1) & 0x7f;
         suffix[1] = 0xf7;
@@ -152,6 +152,9 @@ void loop() {
             Serial.println(buf);
             vid = Midi.vid;
             pid = Midi.pid;
+            // send current patch
+            send_patch();
+            display.showNumberDec(patch_id, false);
         }
     }
 
