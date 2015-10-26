@@ -50,11 +50,12 @@
 
 #define BUTTON_PIN_1 2
 #define BUTTON_PIN_2 3
-#define CS_SDCARD 4
+#define SS_SDCARD 4
 // Display IO
 #define DIO 5
 #define CLK 6
-// CS_USBH 7
+// SS_USBH 10
+// INT_USBH 9
 
 USB  Usb;
 USBH_MIDI Midi(&Usb);
@@ -80,7 +81,7 @@ void setup()
     debouncer2.interval(5);
     display.setBrightness(0x0f);
 
-    if (!SD.begin(CS_SDCARD)) {
+    if (!SD.begin(SS_SDCARD)) {
         Serial.println("Card failed, or not present");
         return;
     }
