@@ -38,59 +38,56 @@
 */
 
 #include <Bounce2.h>
-#include <SPI.h>
 #include <SD.h>
 #include <Usb.h>
 #include <usbh_midi.h>
 #include <TM1637Display.h>
 
-#define PATCH_MAGIC "\xf0\x43\x7d\x00\x02\x0c\x44\x54\x41\x31\x41\x6c\x6c\x50\x00\x00\x7f\x7f"
-#define PRESET_FILE_HEADER 6
-#define PATCH_SIZE 0x100
+// Satisfy IDE, which only needs to see the include statment in the ino.
+#ifdef dobogusinclude
+#include <spi4teensy3.h>
+#include <SPI.h>
+#endif
 
-#define BUTTON_PIN_1 2
-#define BUTTON_PIN_2 3
-#define SS_SDCARD 4
-// Display IO
-#define DIO 5
-#define CLK 6
-// SS_USBH 10
-// INT_USBH 9
+const uint8_t button1_pin = 2;
+const uint8_t button2_pin = 3;
+const uint8_t sdcard_ss_pin = 4;
+const uint8_t display_dio_pin = 5;
+const uint8_t display_clk_pin = 6;
+// usbh_ss_pin 10
+// usbh_int_pin 9
 
-USB  Usb;
+USB Usb;
 USBH_MIDI Midi(&Usb);
-TM1637Display display(CLK, DIO);
-
-uint16_t pid, vid;
-uint8_t patch_id = 1;
-
+TM1637Display display(display_clk_pin, display_dio_pin);
 Bounce debouncer1 = Bounce();
 Bounce debouncer2 = Bounce();
 
 void setup()
 {
-    vid = pid = 0;
     Serial.begin(115200);
 
-    // Setup buttons
-    pinMode(BUTTON_PIN_1,INPUT_PULLUP);
-    debouncer1.attach(BUTTON_PIN_1);
+    // Buttons setup
+    pinMode(button1_pin,INPUT_PULLUP);
+    debouncer1.attach(button1_pin);
     debouncer1.interval(5);
-    pinMode(BUTTON_PIN_2,INPUT_PULLUP);
-    debouncer2.attach(BUTTON_PIN_2);
+    pinMode(button2_pin,INPUT_PULLUP);
+    debouncer2.attach(button2_pin);
     debouncer2.interval(5);
     display.setBrightness(0x0f);
 
-    if (!SD.begin(SS_SDCARD)) {
+    // SD card setup
+    if (!SD.begin(sdcard_ss_pin)) {
         Serial.println("Card failed, or not present");
         return;
     }
     Serial.println("Card initialized.");
 
-    //Workaround for non UHS2.0 Shield
+    // Workaround for non UHS2.0 Shield
     pinMode(7,OUTPUT);
     digitalWrite(7,HIGH);
 
+    // USBH setup
     if (Usb.Init() == -1) {
         while(1); //halt
     }
@@ -98,79 +95,73 @@ void setup()
     Serial.println("USB initialized.");
 }
 
-void send_patch()
+void send_patch(uint8_t patch_id)
 {
-    char buf[20];
     int i, j;
-    uint8_t prefix[] = PATCH_MAGIC;
+    uint8_t prefix[] = {
+        0xf0, 0x43, 0x7d, 0x00, 0x02, 0x0c, 0x44, 0x54,
+        0x41, 0x31, 0x41, 0x6c, 0x6c, 0x50, 0x00, 0x00,
+        0x7f, 0x7f
+    };
+    int cs = 0x371; // prefix checksum
+    const int patch_size = 0x100;
     uint8_t line[16];
     uint8_t suffix[2];
-    int cs = 0x371; // This is the static prefix part
     File patchfile;
 
     patchfile = SD.open("THR10C.YDL");
     if (patchfile) {
-        patchfile.seek(0xd + (patch_id - 1) * (PATCH_SIZE + 5));
-        Midi.SendSysEx(prefix, 18);
-//        for (i = 0; i < 18; i++) {
-//            sprintf(buf, " %02X", prefix[i]);
-//            Serial.print(buf);
-//        }
-//        Serial.println("");
+        Midi.SendSysEx(prefix, sizeof(prefix));
 
-        for (j = 0; j < 16; j++) {
-            for (i = 0; i < 16; i++) {
-                if (j == 15 && i == 15)
+        patchfile.seek(0xd + (patch_id - 1) * (patch_size + 5));
+        for (j = 0; j < patch_size; j += sizeof(line)) {
+            for (i = 0; i < sizeof(line); i++) {
+                if (j + i == patch_size - 1)
                     line[i] = 0;
                 else
                     line[i] = patchfile.read();
-//                sprintf(buf, " %02X", line[i]);
-//                Serial.print(buf);
                 cs += line[i];
             }
-            Midi.SendSysEx(line, 16);
-//            Serial.println("");
+            Midi.SendSysEx(line, sizeof(line));
         }
         suffix[0] = (~cs + 1) & 0x7f;
         suffix[1] = 0xf7;
-        Midi.SendSysEx(suffix, 2);
-//        sprintf(buf, " cs: %02X", suffix[0]);
-//        Serial.print(buf);
+        Midi.SendSysEx(suffix, sizeof(suffix));
         patchfile.close();
     } else {
         Serial.println("File not present.");
     }
 }
 
+int read_buttons(void)
+{
+    debouncer1.update();
+    debouncer2.update();
+    return (debouncer1.rose() ? 1: 0) + (debouncer2.rose() ? -1: 0);
+}
+
 void loop() {
-    int button1, button2;
-    char buf[20];
+    static uint8_t patch_id = 1;
+    static uint16_t pid = 0;
+    static uint16_t vid = 0;
+    static bool thr_connected = false;
+    int button_state;
 
     Usb.Task();
     if(Usb.getUsbTaskState() == USB_STATE_RUNNING) {
         if(Midi.vid != vid || Midi.pid != pid){
-            sprintf(buf, "VID:%04X, PID:%04X", Midi.vid, Midi.pid);
-            Serial.println(buf);
             vid = Midi.vid;
             pid = Midi.pid;
-            // send current patch
-            send_patch();
+            thr_connected = true;
+            send_patch(patch_id);
             display.showNumberDec(patch_id, false);
         }
     }
 
-    debouncer1.update();
-    debouncer2.update();
-
-    button1 = debouncer1.fell();
-    button2 = debouncer2.fell();
-
-    if (button1 || button2) {
-        if (button1 && patch_id < 100)
-            patch_id++;
-        if (button2 && patch_id > 1)
-            patch_id--;
-        send_patch();
+    button_state = read_buttons();
+    if (button_state != 0 && thr_connected) {
+        patch_id = constrain(patch_id + button_state, 0, 100);
+        send_patch(patch_id);
         display.showNumberDec(patch_id, false);
     }
 }
