@@ -1,6 +1,6 @@
 /*
- * Arduino program for sending preset data to a Yamaha THR10 guitar
- * amplifier.  Copyright (C) 2015 Mathis Rosenhauer
+ * Arduino program for sending preset data to a Yamaha THR10 guitar amplifier.
+ * Copyright (C) 2015 Mathis Rosenhauer
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -13,7 +13,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program; if not, If not, see <http://www.gnu.org/licenses/>
+ * along with this program; if not, see <http://www.gnu.org/licenses/>
 */
 
 #include <Bounce2.h>
@@ -33,8 +33,8 @@ const uint8_t button2_pin = 3;
 const uint8_t sdcard_ss_pin = 4;
 const uint8_t display_dio_pin = 5;
 const uint8_t display_clk_pin = 6;
-// usbh_ss_pin 10
 // usbh_int_pin 9
+// usbh_ss_pin 10
 
 USB Usb;
 USBH_MIDI Midi(&Usb);
@@ -44,6 +44,13 @@ Bounce debouncer2 = Bounce();
 
 void setup()
 {
+    const uint8_t seg_thr[] = {
+        SEG_D | SEG_E | SEG_F | SEG_G, // t
+        SEG_C | SEG_E | SEG_F | SEG_G, // h
+        SEG_E | SEG_G,                 // r
+        0
+    };
+
     Serial.begin(115200);
 
     // Buttons setup
@@ -53,7 +60,10 @@ void setup()
     pinMode(button2_pin,INPUT_PULLUP);
     debouncer2.attach(button2_pin);
     debouncer2.interval(5);
+
+    // Display setup
     display.setBrightness(0x0f);
+    display.setSegments(seg_thr);
 
     // SD card setup
     if (!SD.begin(sdcard_ss_pin)) {
@@ -139,7 +149,7 @@ void loop() {
 
     button_state = read_buttons();
     if (button_state != 0 && thr_connected) {
-        patch_id = constrain(patch_id + button_state, 0, 100);
+        patch_id = constrain(patch_id + button_state, 1, 100);
         send_patch(patch_id);
         display.showNumberDec(patch_id, false);
     }
