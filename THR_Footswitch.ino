@@ -28,11 +28,11 @@
 #include <SPI.h>
 #endif
 
-const uint8_t button1_pin = 2;
-const uint8_t button2_pin = 3;
-const uint8_t sdcard_ss_pin = 4;
-const uint8_t display_dio_pin = 5;
-const uint8_t display_clk_pin = 6;
+const uint8_t button1_pin = 3;
+const uint8_t button2_pin = 2;
+const uint8_t sdcard_ss_pin = 7;
+const uint8_t display_dio_pin = 6;
+const uint8_t display_clk_pin = 5;
 // usbh_int_pin 9
 // usbh_ss_pin 10
 
