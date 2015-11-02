@@ -1,4 +1,6 @@
-# Footswitch Controller for THR10 Preset Switching
+# Foot Controller for THR10 Preset Switching
+
+![Footswitch](http://1.bp.blogspot.com/-KSubTc3JJio/VjdUhuKYcoI/AAAAAAAABzM/mUH88VONmtU/s320/footswitch.jpg)
 
 This Arduino sketch uses a USB Host shield to transfer preset data to
 one of the [Yamaha THR](http://www.yamaha.com/thr/) guitar amplifiers.
@@ -35,3 +37,5 @@ Software libraries used:
 The sketch also expects two momentary switches to navigate through the presets
 stored on a micro SD card. All pin assignments are indicated at the top of
 [THR_Footswitch.ino](THR_Footswitch.ino).
+
+![look inside](http://4.bp.blogspot.com/-dgL4m3WRgRk/VjdUktqBwWI/AAAAAAAABzU/ymVse-GbOGM/s320/footswitch_open_text.jpg)
