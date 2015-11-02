@@ -16,6 +16,7 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>
 */
 
+#include <avr/pgmspace.h>
 #include <Bounce2.h>
 #include <SD.h>
 #include <Usb.h>
@@ -28,38 +29,44 @@
 #include <SPI.h>
 #endif
 
-const uint8_t button1_pin = 3;
-const uint8_t button2_pin = 2;
-const uint8_t sdcard_ss_pin = 7;
-const uint8_t display_dio_pin = 6;
+const uint8_t button_l_pin = 2;
+const uint8_t button_r_pin = 3;
 const uint8_t display_clk_pin = 5;
+const uint8_t display_dio_pin = 6;
+const uint8_t sdcard_ss_pin = 7;
 // usbh_int_pin 9
 // usbh_ss_pin 10
+
+// This is displayed when no THR is connected.
+const uint8_t seg_thr[] PROGMEM = {
+    SEG_D | SEG_E | SEG_F | SEG_G, // t
+    SEG_C | SEG_E | SEG_F | SEG_G, // h
+    SEG_E | SEG_G,                 // r
+    0
+};
+// File name of the patch file.
+const char filename[] PROGMEM = "THR10C.YDL";
 
 USB Usb;
 USBH_MIDI Midi(&Usb);
 TM1637Display display(display_clk_pin, display_dio_pin);
-Bounce debouncer1 = Bounce();
-Bounce debouncer2 = Bounce();
+Bounce debouncer_r = Bounce();
+Bounce debouncer_l = Bounce();
 
 void setup()
 {
-    const uint8_t seg_thr[] = {
-        SEG_D | SEG_E | SEG_F | SEG_G, // t
-        SEG_C | SEG_E | SEG_F | SEG_G, // h
-        SEG_E | SEG_G,                 // r
-        0
-    };
-
     Serial.begin(115200);
 
     // Buttons setup
-    pinMode(button1_pin,INPUT_PULLUP);
-    debouncer1.attach(button1_pin);
-    debouncer1.interval(5);
-    pinMode(button2_pin,INPUT_PULLUP);
-    debouncer2.attach(button2_pin);
-    debouncer2.interval(5);
+    // Right button increases patch id.
+    pinMode(button_r_pin,INPUT_PULLUP);
+    debouncer_r.attach(button_r_pin);
+    debouncer_r.interval(5);
+
+    // Left button decreases patch id.
+    pinMode(button_l_pin,INPUT_PULLUP);
+    debouncer_l.attach(button_l_pin);
+    debouncer_l.interval(5);
 
     // Display setup
     display.setBrightness(0x0f);
@@ -67,21 +74,18 @@ void setup()
 
     // SD card setup
     if (!SD.begin(sdcard_ss_pin)) {
-        Serial.println("Card failed, or not present");
-        return;
+        Serial.println(F("Card failed, or not present."));
+        while(1); //halt
     }
-    Serial.println("Card initialized.");
-
-    // Workaround for non UHS2.0 Shield
-    pinMode(7,OUTPUT);
-    digitalWrite(7,HIGH);
+    Serial.println(F("Card initialized."));
 
     // USBH setup
     if (Usb.Init() == -1) {
+        Serial.println(F("USB host init failed."));
         while(1); //halt
     }
     delay(200);
-    Serial.println("USB initialized.");
+    Serial.println(F("USB initialized."));
 }
 
 void send_patch(uint8_t patch_id)
@@ -98,7 +102,7 @@ void send_patch(uint8_t patch_id)
     uint8_t suffix[2];
     File patchfile;
 
-    patchfile = SD.open("THR10C.YDL");
+    patchfile = SD.open(filename);
     if (patchfile) {
         Midi.SendSysEx(prefix, sizeof(prefix));
 
@@ -106,27 +110,33 @@ void send_patch(uint8_t patch_id)
         for (j = 0; j < patch_size; j += sizeof(line)) {
             for (i = 0; i < sizeof(line); i++) {
                 if (j + i == patch_size - 1)
+                    // Last byte of patch has to be zero.
                     line[i] = 0;
                 else
                     line[i] = patchfile.read();
                 cs += line[i];
             }
+            // Split SysEx. THR doesn't seem to care even though
+            // USBH_MIDI ends each fragment with a 0x6 or 0x7 Code
+            // Index Number (CIN).
             Midi.SendSysEx(line, sizeof(line));
         }
+        // Calculate check sum.
         suffix[0] = (~cs + 1) & 0x7f;
+        // end SysEx
         suffix[1] = 0xf7;
         Midi.SendSysEx(suffix, sizeof(suffix));
         patchfile.close();
     } else {
-        Serial.println("File not present.");
+        Serial.println(F("File not present."));
     }
 }
 
 int read_buttons(void)
 {
-    debouncer1.update();
-    debouncer2.update();
-    return (debouncer1.rose() ? 1: 0) + (debouncer2.rose() ? -1: 0);
+    debouncer_r.update();
+    debouncer_l.update();
+    return (debouncer_r.rose() ? 1: 0) + (debouncer_l.rose() ? -1: 0);
 }
 
 void loop() {
@@ -139,18 +149,27 @@ void loop() {
     Usb.Task();
     if(Usb.getUsbTaskState() == USB_STATE_RUNNING) {
         if(Midi.vid != vid || Midi.pid != pid){
+            // A new MIDI device was added. Assume it
+            // is a THR5/10. Just don't connect anything else.
             vid = Midi.vid;
             pid = Midi.pid;
             thr_connected = true;
             send_patch(patch_id);
             display.showNumberDec(patch_id, false);
         }
+
+        button_state = read_buttons();
+
+        if (button_state != 0 && thr_connected) {
+            patch_id = constrain(patch_id + button_state, 1, 100);
+            send_patch(patch_id);
+            display.showNumberDec(patch_id, false);
+        }
+    } else {
+        if (thr_connected) {
+            thr_connected = false;
+            display.setSegments(seg_thr);
+        }
     }
 
-    button_state = read_buttons();
-    if (button_state != 0 && thr_connected) {
-        patch_id = constrain(patch_id + button_state, 1, 100);
-        send_patch(patch_id);
-        display.showNumberDec(patch_id, false);
-    }
 }
