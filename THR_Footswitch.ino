@@ -38,14 +38,14 @@ const uint8_t sdcard_ss_pin = 7;
 // usbh_ss_pin 10
 
 // This is displayed when no THR is connected.
-const uint8_t seg_thr[] PROGMEM = {
+const uint8_t seg_thr[] = {
     SEG_D | SEG_E | SEG_F | SEG_G, // t
     SEG_C | SEG_E | SEG_F | SEG_G, // h
     SEG_E | SEG_G,                 // r
     0
 };
 // File name of the patch file.
-const char filename[] PROGMEM = "THR10C.YDL";
+const char filename[] = "THR10C.YDL";
 
 USB Usb;
 USBH_MIDI Midi(&Usb);
