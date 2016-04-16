@@ -42,7 +42,7 @@ const uint8_t seg_thr[] = {
     SEG_D | SEG_E | SEG_F | SEG_G, // t
     SEG_C | SEG_E | SEG_F | SEG_G, // h
     SEG_E | SEG_G,                 // r
-    0
+    SEG_C | SEG_B                  // 1
 };
 // File name of the patch file.
 const char filename[] = "THR10C.YDL";
@@ -169,6 +169,8 @@ void loop() {
         if (thr_connected) {
             thr_connected = false;
             display.setSegments(seg_thr);
+            pid = 0;
+            vid = 0;
         }
     }
 
