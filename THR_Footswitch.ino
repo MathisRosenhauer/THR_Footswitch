@@ -1,6 +1,6 @@
 /*
  * Arduino program for sending preset data to a Yamaha THR10 guitar amplifier.
- * Copyright (C) 2015 Mathis Rosenhauer
+ * Copyright (C) 2016 Mathis Rosenhauer
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -16,12 +16,31 @@
  * along with this program; if not, see <http://www.gnu.org/licenses/>
 */
 
+/* Set USE_SDCARD to 1 to use SD card reader to read from patch
+   file. If USE_SDCARD is set to 0 then the file patches.h is included
+   which needs to define a PROGMEM variable named patches. Use
+   patchdump.py to generate patches.h from a .YDL file. E.g.
+
+   ./patchdump.py THR10C.YDL -n 12 > patches.h
+
+   to dump the first 12 patches from THR10C.YDL. The Arduino IDE will
+   complain if the patches won't fit into PROGMEM. On a Uno -n 100
+   (all patches) are too many but 79 worked at one point in time.
+*/
+#define USE_SDCARD 0
+
 #include <avr/pgmspace.h>
 #include <Bounce2.h>
-#include <SD.h>
 #include <Usb.h>
 #include <usbh_midi.h>
 #include <TM1637Display.h>
+
+#if USE_SDCARD
+#include <SD.h>
+#define PATCH_FILE "THR10C.YDL"
+#else
+#include "patches.h"
+#endif
 
 // Satisfy IDE, which only needs to see the include statment in the ino.
 #ifdef dobogusinclude
@@ -44,8 +63,6 @@ const uint8_t seg_thr[] = {
     SEG_E | SEG_G,                 // r
     SEG_C | SEG_B                  // 1
 };
-// File name of the patch file.
-const char filename[] = "THR10C.YDL";
 
 USB Usb;
 USBH_MIDI Midi(&Usb);
@@ -72,12 +89,14 @@ void setup()
     display.setBrightness(0x0f);
     display.setSegments(seg_thr);
 
+#if USE_SDCARD
     // SD card setup
     if (!SD.begin(sdcard_ss_pin)) {
         Serial.println(F("Card failed, or not present."));
         while(1); //halt
     }
     Serial.println(F("Card initialized."));
+#endif
 
     // USBH setup
     if (Usb.Init() == -1) {
@@ -90,46 +109,53 @@ void setup()
 
 void send_patch(uint8_t patch_id)
 {
-    int i, j;
+    size_t i, j;
     uint8_t prefix[] = {
         0xf0, 0x43, 0x7d, 0x00, 0x02, 0x0c, 0x44, 0x54,
         0x41, 0x31, 0x41, 0x6c, 0x6c, 0x50, 0x00, 0x00,
         0x7f, 0x7f
     };
-    int cs = 0x371; // prefix checksum
-    const int patch_size = 0x100;
-    uint8_t line[16];
+    uint8_t cs = 0x71; // prefix checksum
+    const size_t patch_size = 0x100;
+    size_t offset = 13 + (patch_id - 1) * (patch_size + 5);
+    uint8_t chunk[16];
     uint8_t suffix[2];
-    File patchfile;
-
-    patchfile = SD.open(filename);
+#if USE_SDCARD
+    File patchfile = SD.open(PATCH_FILE);
     if (patchfile) {
+        patchfile.seek(offset);
+#endif
         Midi.SendSysEx(prefix, sizeof(prefix));
-
-        patchfile.seek(0xd + (patch_id - 1) * (patch_size + 5));
-        for (j = 0; j < patch_size; j += sizeof(line)) {
-            for (i = 0; i < sizeof(line); i++) {
-                if (j + i == patch_size - 1)
+        for (j = 0; j < patch_size; j += sizeof(chunk)) {
+            for (i = 0; i < sizeof(chunk); i++) {
+                if (j + i == patch_size - 1) {
                     // Last byte of patch has to be zero.
-                    line[i] = 0;
-                else
-                    line[i] = patchfile.read();
-                cs += line[i];
+                    chunk[i] = 0;
+                } else {
+#if USE_SDCARD
+                    chunk[i] = patchfile.read();
+#else
+                    chunk[i] = pgm_read_byte(patches + offset++);
+#endif
+                }
+                cs += chunk[i];
             }
             // Split SysEx. THR doesn't seem to care even though
             // USBH_MIDI ends each fragment with a 0x6 or 0x7 Code
             // Index Number (CIN).
-            Midi.SendSysEx(line, sizeof(line));
+            Midi.SendSysEx(chunk, sizeof(chunk));
         }
         // Calculate check sum.
         suffix[0] = (~cs + 1) & 0x7f;
         // end SysEx
         suffix[1] = 0xf7;
         Midi.SendSysEx(suffix, sizeof(suffix));
+#if USE_SDCARD
         patchfile.close();
     } else {
         Serial.println(F("File not present."));
     }
+#endif
 }
 
 int read_buttons(void)
@@ -145,10 +171,15 @@ void loop() {
     static uint16_t vid = 0;
     static bool thr_connected = false;
     int button_state;
+#if USE_SDCARD
+    const int npatches = 100;
+#else
+    const int npatches = (sizeof(patches) - 13) / 261;
+#endif
 
     Usb.Task();
-    if(Usb.getUsbTaskState() == USB_STATE_RUNNING) {
-        if(Midi.vid != vid || Midi.pid != pid){
+    if (Usb.getUsbTaskState() == USB_STATE_RUNNING) {
+        if (Midi.vid != vid || Midi.pid != pid) {
             // A new MIDI device was added. Assume it
             // is a THR5/10. Just don't connect anything else.
             vid = Midi.vid;
@@ -161,7 +192,7 @@ void loop() {
         button_state = read_buttons();
 
         if (button_state != 0 && thr_connected) {
-            patch_id = constrain(patch_id + button_state, 1, 100);
+            patch_id = constrain(patch_id + button_state, 1, npatches);
             send_patch(patch_id);
             display.showNumberDec(patch_id, false);
         }
