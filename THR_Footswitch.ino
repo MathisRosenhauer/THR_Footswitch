@@ -27,7 +27,7 @@
    complain if the patches won't fit into PROGMEM. On a Uno -n 100
    (all patches) are too many but 79 worked at one point in time.
 */
-#define USE_SDCARD 0
+#define USE_SDCARD 1
 
 #include <avr/pgmspace.h>
 #include <Bounce2.h>
