@@ -96,6 +96,10 @@ void setup()
         while(1); //halt
     }
     Serial.println(F("Card initialized."));
+#else
+    // Deactivate card reader
+    pinMode(sdcard_ss_pin, OUTPUT);
+    digitalWrite(sdcard_ss_pin, HIGH);
 #endif
 
     // USBH setup
