@@ -184,6 +184,7 @@ void loop() {
             // is a THR5/10. Just don't connect anything else.
             vid = Midi.vid;
             pid = Midi.pid;
+            delay(1000);
             thr_connected = true;
             send_patch(patch_id);
             display.showNumberDec(patch_id, false);
