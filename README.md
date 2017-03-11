@@ -29,7 +29,8 @@ alternatives available which may work with the software as well.
 Software libraries used:
 
 - [USB Host Shield 2.0 Library](https://github.com/felis/USB_Host_Shield_2.0)
-- [USBH_MIDI v0.2.0](https://github.com/YuuichiAkagawa/USBH_MIDI)
+- [USBH_MIDI](https://github.com/YuuichiAkagawa/USBH_MIDI)
+  Only required for Host Shield 2.0 Library below version 1.3.0.
 - [SD Library](https://www.arduino.cc/en/Reference/SD) (optional)
 - [Arduino library for TM1637](https://github.com/avishorp/TM1637)
 - [BOUNCE 2](https://github.com/thomasfredericks/Bounce2)
