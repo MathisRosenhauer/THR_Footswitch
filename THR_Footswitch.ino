@@ -33,7 +33,7 @@
 #include <Bounce2.h>
 #include <Usb.h>
 #include <usbh_midi.h>
-#include <TM1637Display.h>
+#include "SevenSegmentTM1637.h"
 
 #if USE_SDCARD
 #include <SD.h>
@@ -54,21 +54,27 @@ const uint8_t display_clk_pin = 5;
 const uint8_t display_dio_pin = 6;
 const uint8_t sdcard_ss_pin = 7;
 // usbh_int_pin 9
-// usbh_ss_pin 10
-
-// This is displayed when no THR is connected.
-const uint8_t seg_thr[] = {
-    SEG_D | SEG_E | SEG_F | SEG_G, // t
-    SEG_C | SEG_E | SEG_F | SEG_G, // h
-    SEG_E | SEG_G,                 // r
-    SEG_C | SEG_B                  // 1
-};
+const uint8_t usbh_ss_pin = 10;
 
 USB Usb;
 USBH_MIDI Midi(&Usb);
-TM1637Display display(display_clk_pin, display_dio_pin);
+SevenSegmentTM1637 display(display_clk_pin, display_dio_pin);
 Bounce debouncer_r = Bounce();
 Bounce debouncer_l = Bounce();
+
+void print_id(uint16_t id)
+{
+    uint8_t lead = 0;
+    if (id < 10)
+        lead = 3;
+    else if (id < 100)
+        lead = 2;
+    else if (id < 1000)
+        lead = 1;
+    display.clear();
+    display.setCursor(0, lead);
+    display.print(id);
+}
 
 void setup()
 {
@@ -86,8 +92,14 @@ void setup()
     debouncer_l.interval(5);
 
     // Display setup
-    display.setBrightness(0x0f);
-    display.setSegments(seg_thr);
+    display.begin();
+    display.setBacklight(100);
+    display.print("thr1");
+
+    pinMode(sdcard_ss_pin, OUTPUT);
+    digitalWrite(sdcard_ss_pin, HIGH);
+    pinMode(usbh_ss_pin, OUTPUT);
+    digitalWrite(usbh_ss_pin, HIGH);
 
 #if USE_SDCARD
     // SD card setup
@@ -97,9 +109,7 @@ void setup()
     }
     Serial.println(F("Card initialized."));
 #else
-    // Deactivate card reader
-    pinMode(sdcard_ss_pin, OUTPUT);
-    digitalWrite(sdcard_ss_pin, HIGH);
+    Serial.println(F("Card disabled."));
 #endif
 
     // USBH setup
@@ -191,7 +201,7 @@ void loop() {
             delay(1000);
             thr_connected = true;
             send_patch(patch_id);
-            display.showNumberDec(patch_id, false);
+            print_id(patch_id);
         }
 
         button_state = read_buttons();
@@ -199,15 +209,15 @@ void loop() {
         if (button_state != 0 && thr_connected) {
             patch_id = constrain(patch_id + button_state, 1, npatches);
             send_patch(patch_id);
-            display.showNumberDec(patch_id, false);
+            print_id(patch_id);
         }
     } else {
         if (thr_connected) {
             thr_connected = false;
-            display.setSegments(seg_thr);
+            display.clear();
+            display.print("thr1");
             pid = 0;
             vid = 0;
         }
     }
-
 }
