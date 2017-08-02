@@ -76,12 +76,12 @@ void setup()
 
     // Buttons setup
     // Right button increases patch id.
-    pinMode(button_r_pin,INPUT_PULLUP);
+    pinMode(button_r_pin, INPUT_PULLUP);
     debouncer_r.attach(button_r_pin);
     debouncer_r.interval(5);
 
     // Left button decreases patch id.
-    pinMode(button_l_pin,INPUT_PULLUP);
+    pinMode(button_l_pin, INPUT_PULLUP);
     debouncer_l.attach(button_l_pin);
     debouncer_l.interval(5);
 
@@ -109,7 +109,6 @@ void setup()
 
 void send_patch(uint8_t patch_id)
 {
-    size_t i, j;
     uint8_t prefix[] = {
         0xf0, 0x43, 0x7d, 0x00, 0x02, 0x0c, 0x44, 0x54,
         0x41, 0x31, 0x41, 0x6c, 0x6c, 0x50, 0x00, 0x00,
@@ -126,8 +125,8 @@ void send_patch(uint8_t patch_id)
         patchfile.seek(offset);
 #endif
         Midi.SendSysEx(prefix, sizeof(prefix));
-        for (j = 0; j < patch_size; j += sizeof(chunk)) {
-            for (i = 0; i < sizeof(chunk); i++) {
+        for (size_t j = 0; j < patch_size; j += sizeof(chunk)) {
+            for (size_t i = 0; i < sizeof(chunk); i++) {
                 if (j + i == patch_size - 1) {
                     // Last byte of patch has to be zero.
                     chunk[i] = 0;
@@ -167,10 +166,7 @@ int read_buttons(void)
 
 void loop() {
     static uint8_t patch_id = 1;
-    static uint16_t pid = 0;
-    static uint16_t vid = 0;
     static bool thr_connected = false;
-    int button_state;
 #if USE_SDCARD
     const int npatches = 100;
 #else
@@ -179,31 +175,23 @@ void loop() {
 
     Usb.Task();
     if (Usb.getUsbTaskState() == USB_STATE_RUNNING) {
-        if (Midi.vid != vid || Midi.pid != pid) {
-            // A new MIDI device was added. Assume it
+        if (thr_connected) {
+            int button_state = read_buttons();
+            if (button_state != 0) {
+                patch_id = constrain(patch_id + button_state, 1, npatches);
+                send_patch(patch_id);
+                display.showNumberDec(patch_id, false);
+            }
+        } else {
+            // A new device was connected. Assume it
             // is a THR5/10. Just don't connect anything else.
-            vid = Midi.vid;
-            pid = Midi.pid;
             delay(1000);
             thr_connected = true;
             send_patch(patch_id);
             display.showNumberDec(patch_id, false);
         }
-
-        button_state = read_buttons();
-
-        if (button_state != 0 && thr_connected) {
-            patch_id = constrain(patch_id + button_state, 1, npatches);
-            send_patch(patch_id);
-            display.showNumberDec(patch_id, false);
-        }
-    } else {
-        if (thr_connected) {
-            thr_connected = false;
-            display.setSegments(seg_thr);
-            pid = 0;
-            vid = 0;
-        }
+    } else if (thr_connected) {
+        thr_connected = false;
+        display.setSegments(seg_thr);
     }
-
 }
