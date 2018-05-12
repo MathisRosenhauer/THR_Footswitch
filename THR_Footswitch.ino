@@ -52,7 +52,7 @@ const uint8_t button_l_pin = 2;
 const uint8_t button_r_pin = 3;
 const uint8_t display_clk_pin = 5;
 const uint8_t display_dio_pin = 6;
-const uint8_t sdcard_ss_pin = 7;
+const uint8_t sdcard_ss_pin = 4;
 // usbh_int_pin 9
 // usbh_ss_pin 10
 
@@ -73,6 +73,10 @@ Bounce debouncer_l = Bounce();
 void setup()
 {
     Serial.begin(115200);
+
+    // Workaround for non UHS2.0 Shield
+    pinMode(7, OUTPUT);
+    digitalWrite(7, HIGH);
 
     // Buttons setup
     // Right button increases patch id.
