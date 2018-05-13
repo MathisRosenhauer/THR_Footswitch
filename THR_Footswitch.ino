@@ -74,10 +74,6 @@ void setup()
 {
     Serial.begin(115200);
 
-    // Workaround for non UHS2.0 Shield
-    pinMode(7, OUTPUT);
-    digitalWrite(7, HIGH);
-
     // Buttons setup
     // Right button increases patch id.
     pinMode(button_r_pin,INPUT_PULLUP);
@@ -100,10 +96,6 @@ void setup()
         while(1); //halt
     }
     Serial.println(F("Card initialized."));
-#else
-    // Deactivate card reader
-    pinMode(sdcard_ss_pin, OUTPUT);
-    digitalWrite(sdcard_ss_pin, HIGH);
 #endif
 
     // USBH setup
