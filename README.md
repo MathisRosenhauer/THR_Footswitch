@@ -1,6 +1,6 @@
 # Foot Controller for THR10 Preset Switching
 
-![Footswitch](http://4.bp.blogspot.com/-ORFZnIm6-m8/Vj5bSURNuII/AAAAAAAAB0Y/4Z3q43ectlU/s320/thr_footswitch.jpg)
+![Footswitch](https://raw.githubusercontent.com/MathisRosenhauer/THR_Footswitch/master/images/thr_footswitch.jpg)
 
 This Arduino sketch uses a USB Host shield to transfer preset data to
 one of the [Yamaha THR](http://www.yamaha.com/thr/) guitar amplifiers.
@@ -39,7 +39,7 @@ The sketch also expects two momentary switches to navigate through the
 presets stored on a micro SD card or in PROGMEM. All pin assignments
 are indicated at the top of [THR_Footswitch.ino](THR_Footswitch.ino).
 
-![look inside](http://3.bp.blogspot.com/-nTNeHTxPMKk/Vk3_KwQ5m5I/AAAAAAAAB2s/Q4MVQ6Qm1v0/s320/footswitch_inside.jpg)
+![look inside](https://raw.githubusercontent.com/MathisRosenhauer/THR_Footswitch/master/images/footswitch_inside.jpg)
 
 If PROGMEM is used to store the patches, then the Python script patchdump.py
 may be used to convert patches from a .YDL file to a PROGMEM variable.
