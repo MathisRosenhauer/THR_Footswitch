@@ -41,11 +41,31 @@ are indicated at the top of [THR_Footswitch.ino](THR_Footswitch.ino).
 
 ![look inside](https://raw.githubusercontent.com/MathisRosenhauer/THR_Footswitch/master/images/footswitch_inside.jpg)
 
-If PROGMEM is used to store the patches, then the Python script patchdump.py
-may be used to convert patches from a .YDL file to a PROGMEM variable.
+If PROGMEM is used to store the presets, then the Python script patchdump.py
+may be used to convert presets from a .YDL file to a PROGMEM variable.
 
 `./patchdump.py THR10C.YDL -n 25 > patches.h`
 
-This would put the first 25 patches from THR10C.YDL into
+This would put the first 25 presets from THR10C.YDL into
 PROGMEM. `USE_SDCARD` then has to be set to `0` in THR_Footswitch.ino to
-use PROGMEM for patches.
+use PROGMEM for presets.
+
+## May 2019 update
+
+Quite a few people built this project over the past four years and
+that is only counting those who contacted me. I'm happy to say that
+most people eventually got the footswitch working but there is one
+thing that caused trouble: the SD card reader. There seem to be
+many card readers out there who don't play nicely on the SPI bus. The
+symptom is that the sketch gets stuck because the THR10 is never
+recognized by the USB host. Some people also reported that the SD card
+itself caused the problems.
+
+When you assemble the project, you should first build the version
+without the card reader (presets in PROGMEM). When this works reliably
+you can add the card reader. If it then stops working you should try a
+different card reader and/or SD card.
+
+I had good results with a Catalex card reader and a Kingston 8 GB
+micro SD card but I also got reports that some revisions of the
+Catalex reader didn't work.
