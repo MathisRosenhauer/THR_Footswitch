@@ -16,6 +16,10 @@ box and switch between presets without the need for a full-sized computer.
 The most interesting part is the send_patch() function. It could be used
 on different hardware setups with minor changes.
 
+**Note that this only works with the original THR10, THR10C, THR10X,
+THR5 and THR5a models. Later models will not work with this sketch
+and probably also not with the presented hardware.**
+
 ## Hardware
 
 The sketch was written for the following hardware. There are many
